@@ -9,10 +9,13 @@ app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Needed for session management
 CORS(app, origins=[
     "https://criticalfailcoding.com",
-    "https://localhost:3000"
+    "http://localhost:3000"
 ], supports_credentials=True)
 
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins=[
+    "https://criticalfailcoding.com",
+    "http://localhost:3000"
+])
 
 # Uploading files/file types
 UPLOAD_FOLDER = 'uploads'
