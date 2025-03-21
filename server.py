@@ -7,7 +7,11 @@ import uuid, random, string, os
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Needed for session management
-CORS(app)
+CORS(app, origins=[
+    "https://criticalfailcoding.com",
+    "https://localhost:3000"
+], supports_credentials=True)
+
 socketio = SocketIO(app)
 
 # Uploading files/file types
