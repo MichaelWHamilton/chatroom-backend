@@ -70,11 +70,15 @@ def download_file(filename):
 
 @socketio.on('connect')
 def handle_connect():
-    if 'username' not in session:
-        session['username'] = gen_username()
-    username = session['username']
-    print(f"System: {username} has joined the chat.")    
-    socketio.emit('set_username', {'username': username})
+    print(f"Socket connected: {request.sid}") # log connect
+
+@socketio.on('request_username')
+def handle_custom_username(data):
+    custom = data.get('custom','').strip()
+    username = custom if custom else gen_username()
+    session['username'] = username
+    print(f"User joined with username: {username}")
+    socketio.emit('set_username', {'username': username}, room=request.sid)
 
 @socketio.on('message')
 def handle_message(data):
