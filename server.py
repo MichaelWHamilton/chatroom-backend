@@ -72,13 +72,31 @@ def download_file(filename):
 def handle_connect():
     print(f"Socket connected: {request.sid}") # log connect
 
+
+user_colors = {}
+
+readable_colors = [
+    "#3498db", "#9b59b6", "#1abc9c", "#f39c12",
+    "#e67e22", "#e74c3c", "#2ecc71", "#34495e"
+]
+
 @socketio.on('request_username')
 def handle_custom_username(data):
+    # Assign username, random or user given name
     custom = data.get('custom','').strip()
     username = custom if custom else gen_username()
     session['username'] = username
+
+    # Assign colors for users
+    if username not in user_colors:
+        color = random.choice(readable_colors)
+        user_colors[username] = color
+
     print(f"User joined with username: {username}")
-    socketio.emit('set_username', {'username': username}, room=request.sid)
+    socketio.emit('set_username', {
+        'username': username,
+        'color': user_colors[username]
+        }, room=request.sid)
 
 @socketio.on('message')
 def handle_message(data):
@@ -87,10 +105,16 @@ def handle_message(data):
         if isinstance(data, dict) and 'message' in data:
             username = session.get('username', 'Anonymous')
             message = data['message']
+            color = user_colors.get(username, "888")
+
             print(f"{username}: {message}")
 
             # Broadcast the message to all clients
-            socketio.emit('message', {'username': username, 'message': message})
+            socketio.emit('message', {
+                'username': username, 
+                'message': message, 
+                'color': color
+            })
         else:
             print("Error: Received data is not a valid object or missing 'message' field.")
     except Exception as e:
