@@ -22,7 +22,7 @@ socketio = SocketIO(app, cors_allowed_origins=[
     "http://localhost:3000"
 ])
 
-#profanity
+# Profanity
 profanity.load_censor_words()
 
 # Security config
