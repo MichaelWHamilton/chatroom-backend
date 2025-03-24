@@ -3,7 +3,11 @@
 from flask import Flask, render_template, session, request, send_from_directory, jsonify
 from flask_socketio import SocketIO
 from flask_cors import CORS
-import uuid, random, string, os
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.utils import secure_filename
+import uuid, random, string, os, mimetypes
+
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Needed for session management
@@ -16,6 +20,11 @@ socketio = SocketIO(app, cors_allowed_origins=[
     "https://criticalfailcoding.com",
     "http://localhost:3000"
 ])
+# Security config
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024 # 5MB max upload
+
+# Rate limiter
+limiter = Limiter(get_remote_address, app=app, default_limits=["3 per minute"])
 
 # Uploading files/file types
 UPLOAD_FOLDER = 'uploads'
@@ -23,7 +32,9 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Creates folder if not already there
 ALLOWED_EXTENSIONS = {'txt', 'jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'webm'}  # Allow image and video file types
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+    mime_type, _ = mimetypes.guess_type(filename)
+    return ext in ALLOWED_EXTENSIONS and mime_type is not None
 
 def gen_username():
     return "User-" + ''.join(random.choices(string.digits, k=4))
@@ -34,6 +45,7 @@ def index():
     return render_template('index.html', favicon_version=favicon_version)
 
 @app.route('/upload', methods=['POST'])
+@limiter.limit("3 per minute")
 def upload_file():
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
@@ -44,23 +56,30 @@ def upload_file():
         return jsonify({"error": "No selected file"}), 400
 
     if allowed_file(file.filename):
-        filename = f"{uuid.uuid4()}_{file.filename}"
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(filepath)
+        try:
+            filename = secure_filename(file.filename)
+            filename = f"{uuid.uuid4()}_{file.filename}"
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(filepath)
 
-        # Send file to chat
-        file_url = f"/download/{filename}"
-        
-        socketio.emit('message', {
-            'username': username, 
-            'message': f"Shared a file: {file.filename}", 
-            "file_url": file_url})
-        
-        return jsonify({
-            "message": "File uploaded successfully",
-            "file_url": file_url,
-            "file_name": file.filename
-        })
+            # Send file to chat
+            file_url = f"/download/{filename}"
+            print(f"[UPLOAD] {username} uploaded: {file.filename} from IP: {request.remote_addr}")
+            
+            socketio.emit('message', {
+                'username': username, 
+                'message': f"Shared a file: {file.filename}", 
+                "file_url": file_url})
+            
+            return jsonify({
+                "message": "File uploaded successfully",
+                "file_url": file_url,
+                "file_name": file.filename
+            })
+    
+        except Exception as e:
+            print(f"[ERROR] Upload failed: {e}")
+            return jsonify({"error": "Upload failed"}), 500
 
     return jsonify({"error": "Invalid file type"}), 400
 
@@ -70,7 +89,7 @@ def download_file(filename):
 
 @socketio.on('connect')
 def handle_connect():
-    print(f"Socket connected: {request.sid}") # log connect
+    print(f"[CONNECTED] SID: {request.sid}, IP: {request.remote_addr}") # log connect
 
 
 user_colors = {}
@@ -107,7 +126,8 @@ def handle_message(data):
             message = data['message']
             color = user_colors.get(username, "888")
 
-            print(f"{username}: {message}")
+            print(f"[MESSAGE] {username}: {message}")
+            
 
             # Broadcast the message to all clients
             socketio.emit('message', {
