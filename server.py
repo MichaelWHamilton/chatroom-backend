@@ -6,6 +6,7 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
+from better_profanity import profanity
 import uuid, random, string, os, mimetypes
 
 
@@ -20,6 +21,10 @@ socketio = SocketIO(app, cors_allowed_origins=[
     "https://criticalfailcoding.com",
     "http://localhost:3000"
 ])
+
+#profanity
+profanity.load_censor_words()
+
 # Security config
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024 # 5MB max upload
 
@@ -128,11 +133,13 @@ def handle_message(data):
 
             print(f"[MESSAGE] {username}: {message}")
             
+            #profanity filter
+            clean_message = profanity.censor(data['message'])
 
             # Broadcast the message to all clients
             socketio.emit('message', {
                 'username': username, 
-                'message': message, 
+                'message': clean_message, 
                 'color': color
             })
         else:
