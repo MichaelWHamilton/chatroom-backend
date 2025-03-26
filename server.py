@@ -92,17 +92,46 @@ def upload_file():
 def download_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=True)
 
-@socketio.on('connect')
-def handle_connect():
-    print(f"[CONNECTED] SID: {request.sid}, IP: {request.remote_addr}") # log connect
-
-
 user_colors = {}
+
+sid_username_dict = {}
+
+active_users = {}
+
 
 readable_colors = [
     "#3498db", "#9b59b6", "#1abc9c", "#f39c12",
     "#e67e22", "#e74c3c", "#2ecc71", "#34495e"
 ]
+
+@socketio.on('connect')
+def handle_connect():
+    print(f"[CONNECTED] SID: {request.sid}, IP: {request.remote_addr}") # log connect
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print(f"[DISCONNECTED] SID: {request.sid}, IP: {request.remote_addr}") # log disconnect
+    sid = request.sid
+    username = sid_username_dict.pop(sid, None)
+    if username and sid:
+        user_colors.pop(username, None)
+        
+        # Broadcast message from server when a user diconnects
+        socketio.emit('message', {
+            'username': 'System',
+            'message': f"{username} has left the chat.",
+            'color': '#444'
+        })
+
+        socketio.emit('update_user_list', [{"username": u, "color": c} for u, c in user_colors.items()])
+        
+        active_users.discard(username)
+
+        socketio.emit('update_user_list', list(active_users))
+
+
+
+
 
 @socketio.on('request_username')
 def handle_custom_username(data):
@@ -117,11 +146,19 @@ def handle_custom_username(data):
         user_colors[username] = color
 
     print(f"User joined with username: {username}")
+
+    sid_username_dict[request.sid] = username
+
+    user_list = [{"username": u, "color": c} for u, c in user_colors.items()]
+
+    socketio.emit('update_user_list', user_list)
+
     socketio.emit('set_username', {
         'username': username,
         'color': user_colors[username]
         }, room=request.sid)
     
+    # Broadcast message from server when a user connects
     socketio.emit('message', {
         'username': 'System',
         'message': f"{username} has joined the chat.",
