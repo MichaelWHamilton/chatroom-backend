@@ -121,6 +121,13 @@ def handle_custom_username(data):
         'username': username,
         'color': user_colors[username]
         }, room=request.sid)
+    
+    socketio.emit('message', {
+        'username': username,
+        'message': f"{username} has joined the chat.",
+        'color': '#444'
+    })
+    
 
 @socketio.on('message')
 def handle_message(data):
