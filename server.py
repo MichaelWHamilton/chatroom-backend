@@ -118,11 +118,13 @@ def handle_disconnect():
         user_colors.pop(username, None)
         
         # Broadcast message from server when a user diconnects
-        socketio.emit('message', {
+        disconnect_message = {
             'username': 'System',
             'message': f"{username} has left the chat.",
             'color': '#444'
-        })
+        }
+        chat_history.append(disconnect_message)
+        socketio.emit('message', disconnect_message)
 
         socketio.emit('update_user_list', [{"username": u, "color": c} for u, c in user_colors.items()])
         
@@ -157,11 +159,13 @@ def handle_custom_username(data):
         }, room=request.sid)
     
     # Broadcast message from server when a user connects
-    socketio.emit('message', {
+    join_message = {
         'username': 'System',
         'message': f"{username} has joined the chat.",
         'color': '#444'
-    })
+    }
+    chat_history.append(join_message)
+    socketio.emit('message', join_message)
 
     socketio.emit('chat_history', list(chat_history), room=request.sid)
     
