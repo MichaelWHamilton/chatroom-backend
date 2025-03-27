@@ -8,7 +8,7 @@ from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 from better_profanity import profanity
 import uuid, random, string, os, mimetypes
-
+from collections import deque
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Needed for session management
@@ -98,6 +98,7 @@ sid_username_dict = {}
 
 active_users = {}
 
+chat_history = deque(maxlen=30)
 
 readable_colors = [
     "#3498db", "#9b59b6", "#1abc9c", "#f39c12",
@@ -128,9 +129,6 @@ def handle_disconnect():
         active_users.discard(username)
 
         socketio.emit('update_user_list', list(active_users))
-
-
-
 
 
 @socketio.on('request_username')
@@ -164,6 +162,8 @@ def handle_custom_username(data):
         'message': f"{username} has joined the chat.",
         'color': '#444'
     })
+
+    socketio.emit('chat_history', list(chat_history), room=request.sid)
     
 
 @socketio.on('message')
@@ -181,11 +181,13 @@ def handle_message(data):
             clean_message = profanity.censor(data['message'])
 
             # Broadcast the message to all clients
-            socketio.emit('message', {
+            message_data = {
                 'username': username, 
                 'message': clean_message, 
                 'color': color
-            })
+            }
+            chat_history.append(message_data)
+            socketio.emit('message', message_data)   
         else:
             print("Error: Received data is not a valid object or missing 'message' field.")
     except Exception as e:
