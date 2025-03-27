@@ -121,7 +121,7 @@ def handle_disconnect():
             'username': 'System',
             'message': f"<span style='color: {user_colors[username]}; font-weight: bold;'>{username}</span> has left the chat.",
             'color': '#444',
-            'timestamp' : datetime.now().strftime("%m-%d %H:%M:%S")
+            'timestamp' : datetime.now().strftime("%H:%M:%S")
         }
         user_colors.pop(username, None)
         chat_history.append(disconnect_message)
@@ -166,7 +166,7 @@ def handle_custom_username(data):
         'username': 'System',
         'message': f"<span style='color: {user_colors[username]}; font-weight: bold;'>{username}</span> has joined the chat.",
         'color': '#444',
-        'timestamp' : datetime.now().strftime("%m-%d %H:%M:%S")
+        'timestamp' : datetime.now().strftime("%H:%M:%S")
     }
     chat_history.append(join_message)
     socketio.emit('message', join_message)
@@ -191,7 +191,7 @@ def handle_message(data):
                 'username': username, 
                 'message': clean_message, 
                 'color': color,
-                'timestamp' : datetime.now().strftime("%m-%d %H:%M:%S")
+                'timestamp' : datetime.now().strftime("%H:%M:%S")
             }
             chat_history.append(message_data)
             socketio.emit('message', message_data)   
