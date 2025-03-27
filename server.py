@@ -7,7 +7,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 from better_profanity import profanity
-import uuid, random, string, os, mimetypes, 
+import uuid, random, string, os, mimetypes
 from datetime import datetime
 from collections import deque
 
