@@ -7,7 +7,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 from better_profanity import profanity
-import uuid, random, string, os, mimetypes
+import uuid, random, string, os, mimetypes, datetime
 from collections import deque
 
 app = Flask(__name__)
@@ -120,7 +120,8 @@ def handle_disconnect():
         disconnect_message = {
             'username': 'System',
             'message': f"<span style='color: {user_colors[username]}; font-weight: bold;'>{username}</span> has left the chat.",
-            'color': '#444'
+            'color': '#444',
+            'timestamp' : datetime.now()
         }
         user_colors.pop(username, None)
         chat_history.append(disconnect_message)
@@ -164,7 +165,8 @@ def handle_custom_username(data):
     join_message = {
         'username': 'System',
         'message': f"<span style='color: {user_colors[username]}; font-weight: bold;'>{username}</span> has joined the chat.",
-        'color': '#444'
+        'color': '#444',
+        'timestamp' : datetime.now()
     }
     chat_history.append(join_message)
     socketio.emit('message', join_message)
@@ -188,7 +190,8 @@ def handle_message(data):
             message_data = {
                 'username': username, 
                 'message': clean_message, 
-                'color': color
+                'color': color,
+                'timestamp' : datetime.now()
             }
             chat_history.append(message_data)
             socketio.emit('message', message_data)   
