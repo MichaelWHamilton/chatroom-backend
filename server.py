@@ -158,6 +158,8 @@ def handle_custom_username(data):
         'color': user_colors[username]
         }, room=request.sid)
     
+    socketio.emit('chat_history', list(chat_history), room=request.sid)
+
     # Broadcast message from server when a user connects
     join_message = {
         'username': 'System',
@@ -167,7 +169,7 @@ def handle_custom_username(data):
     chat_history.append(join_message)
     socketio.emit('message', join_message)
 
-    socketio.emit('chat_history', list(chat_history), room=request.sid)
+    
     
 
 @socketio.on('message')
