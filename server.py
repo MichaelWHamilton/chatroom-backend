@@ -116,11 +116,10 @@ def handle_disconnect():
     username = sid_username_dict.pop(sid, None)
     if username and sid:
         
-        
         # Broadcast message from server when a user diconnects
         disconnect_message = {
             'username': 'System',
-            'message': f"<span style='color: {user_colors[username]}; font-weight: bold;'>{username}</span> has joined the chat.",
+            'message': f"<span style='color: {user_colors[username]}; font-weight: bold;'>{username}</span> has left the chat.",
             'color': '#444'
         }
         user_colors.pop(username, None)
