@@ -115,7 +115,7 @@ def handle_disconnect():
     sid = request.sid
     username = sid_username_dict.pop(sid, None)
     if username and sid:
-        user_colors.pop(username, None)
+        
         
         # Broadcast message from server when a user diconnects
         disconnect_message = {
@@ -123,6 +123,7 @@ def handle_disconnect():
             'message': f"<span style='color: {user_colors[username]}; font-weight: bold;'>{username}</span> has joined the chat.",
             'color': '#444'
         }
+        user_colors.pop(username, None)
         chat_history.append(disconnect_message)
         socketio.emit('message', disconnect_message)
 
