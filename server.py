@@ -166,7 +166,7 @@ def handle_custom_username(data):
         'username': 'System',
         'message': f"<span style='color: {user_colors[username]}; font-weight: bold;'>{username}</span> has joined the chat.",
         'color': '#444',
-        'timestamp' : datetime.now()
+        'timestamp' : datetime.now().strftime("%m-%d %H:%M:%S")
     }
     chat_history.append(join_message)
     socketio.emit('message', join_message)
