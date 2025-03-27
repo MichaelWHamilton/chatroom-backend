@@ -120,7 +120,7 @@ def handle_disconnect():
         # Broadcast message from server when a user diconnects
         disconnect_message = {
             'username': 'System',
-            'message': f"{username} has left the chat.",
+            'message': f"<span style='color: {user_colors[username]}; font-weight: bold;'>{username}</span> has joined the chat.",
             'color': '#444'
         }
         chat_history.append(disconnect_message)
