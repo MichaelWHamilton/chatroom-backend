@@ -163,7 +163,7 @@ def handle_custom_username(data):
     # Broadcast message from server when a user connects
     join_message = {
         'username': 'System',
-        'message': f"{username} has joined the chat.",
+        'message': f"<span style='color: {user_colors[username]};'>{username}</span> has joined the chat.",
         'color': '#444'
     }
     chat_history.append(join_message)
