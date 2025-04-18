@@ -9,7 +9,8 @@ from werkzeug.utils import secure_filename
 from better_profanity import profanity
 import uuid, random, string, os, mimetypes
 from datetime import datetime
-from collections import deque
+from time import time
+from collections import deque, defaultdict
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Needed for session management
@@ -31,7 +32,7 @@ profanity.load_censor_words()
 app.config['MAX_CONTENT_LENGTH'] = 5000 * 1024 * 1024  # 5000MB max upload
 
 # Rate limiter
-limiter = Limiter(get_remote_address, app=app, default_limits=["10 per minute"])
+limiter = Limiter(app=app, key_func=get_remote_address, default_limits=[])
 
 # Uploading files/file types
 UPLOAD_FOLDER = 'uploads'
@@ -65,7 +66,7 @@ def index():
     return render_template('index.html', favicon_version=favicon_version)
 
 @app.route('/upload', methods=['POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("3 per minute")
 def upload_file():
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
@@ -133,8 +134,10 @@ active_users = {}
 chat_history = deque(maxlen=20)
 
 readable_colors = [
-    "#3498db", "#9b59b6", "#1abc9c"
+    "#00D0E0", "#00D0F0", "#00E000", "#00E060", "#CBCC32",
+    "#99D65B", "#26D8D8", "#DBC1BC", "#EFD175", "#D6D65B"
 ]
+random.shuffle(readable_colors)  # Shuffle the colors to randomize the order
 
 @socketio.on('connect')
 def handle_connect():
@@ -149,10 +152,10 @@ def handle_disconnect():
         # Broadcast message from server when a user disconnects
         disconnect_message = {
             'username': 'System',
-            'message': f"<span style='color: {user_colors.get(username, '#888')}; font-weight: bold;'>{username}</span> has left the chat.",
+            'message': f"{username} has left the chat.",
             'user': username,  # Include the username separately
-            'color': user_colors.get(username, "#888"),  # Include the user's color
-            'timestamp': datetime.now().strftime("%I:%M:%S %p")  # 12-hour AM/PM format
+            'color': user_colors.get(username, "#888"),  # Include the user's base color
+            'timestamp': datetime.now().strftime("%I:%M:%S %p")
         }
         chat_history.append(disconnect_message)  # Add to chat history
         socketio.emit('message', disconnect_message)  # Broadcast the message
@@ -161,6 +164,7 @@ def handle_disconnect():
         if username in user_colors:
             readable_colors.append(user_colors[username])  # Re-add the color to the pool
             user_colors.pop(username, None)  # Remove the user from the color map
+            random.shuffle(readable_colors)  # Shuffle the colors to maintain randomness
 
         # Update the user list for all clients
         user_list = [{"username": u, "color": c} for u, c in user_colors.items()]
@@ -201,18 +205,36 @@ def handle_custom_username(data):
     # Broadcast message from server when a user connects
     join_message = {
         'username': 'System',
-        'message': f"<span style='color: {user_colors[username]}; font-weight: bold;'>{username}</span> has joined the chat.",
+        'message': f"{username} has joined the chat.",
         'user': username,  # Include the username separately
-        'color': user_colors[username],  # Include the user's color
+        'color': user_colors[username],  # Include the user's base color
         'timestamp': datetime.now().strftime("%I:%M:%S %p")
     }
     chat_history.append(join_message)
     socketio.emit('message', join_message)
 
-    
+message_timestamps = defaultdict(list)
+RATE_LIMIT = 3 # Amount per time window
+TIME_WINDOW = 60 # Seconds
+
 @socketio.on('message')
 def handle_message(data):
     try:
+        user_key = session.get("username") or request.sid or request.remote_addr
+        now = time()
+        
+        message_timestamps[user_key] = [
+            ts for ts in message_timestamps[user_key] if now - ts < TIME_WINDOW
+        ]
+
+        if len(message_timestamps[user_key]) >= RATE_LIMIT:
+            oldest = min(message_timestamps[user_key])
+            time_remaining = int(TIME_WINDOW - (now - oldest))
+            socketio.emit('rate_limited', { "time_remaining" : time_remaining }, room=request.sid)
+            return
+
+        message_timestamps[user_key].append(now)
+
         if isinstance(data, dict) and 'message' in data:
             username = session.get('username', 'Anonymous')
             message = data['message']
